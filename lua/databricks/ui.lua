@@ -56,6 +56,15 @@ end
 function M.append(lines)
   if type(lines) == "string" then
     lines = vim.split(lines, "\n", { plain = true })
+  else
+    -- Flatten any embedded newlines within table elements
+    local flat = {}
+    for _, line in ipairs(lines) do
+      for _, part in ipairs(vim.split(line, "\n", { plain = true })) do
+        table.insert(flat, part)
+      end
+    end
+    lines = flat
   end
 
   local bufnr = M.get_buf()
