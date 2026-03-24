@@ -133,21 +133,15 @@ local function submit_job(dbfs_path, cluster_id, callback)
       return
     end
 
-    local ok, parsed = pcall(vim.json.decode, stdout)
-    if not ok or type(parsed) ~= "table" then
-      ui.show_error("Failed to parse job submit response")
-      callback(nil)
-      return
-    end
-
-    local run_id = parsed.run_id
+    -- Extract run_id as raw string to avoid Lua float precision loss
+    local run_id = stdout:match('"run_id"%s*:%s*(%d+)')
     if not run_id then
       ui.show_error("No run_id in submit response")
       callback(nil)
       return
     end
 
-    M._last_run_id = tostring(run_id)
+    M._last_run_id = run_id
     ui.set_status("Job submitted: run_id=" .. M._last_run_id)
     callback(M._last_run_id)
   end)
