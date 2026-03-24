@@ -99,9 +99,14 @@ local function submit_job(dbfs_path, cluster_id, callback)
   -- Build JSON payload safely (using vim.json.encode instead of string concatenation)
   local payload = vim.json.encode({
     run_name = "databricks-nvim-run",
-    existing_cluster_id = cluster_id,
-    spark_python_task = {
-      python_file = dbfs_path,
+    tasks = {
+      {
+        task_key = "databricks_nvim_task",
+        existing_cluster_id = cluster_id,
+        spark_python_task = {
+          python_file = dbfs_path,
+        },
+      },
     },
   })
 
