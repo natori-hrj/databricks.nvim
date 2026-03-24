@@ -22,5 +22,7 @@ M.run = run.run_current_file
 M.output = run.show_last_output
 M.cluster_list = cluster.show_list
 M.cluster_select = cluster.select
+M.cluster_start = cluster.start
+M.cluster_stop = cluster.stop
 
 return M

@@ -131,6 +131,61 @@ function M.select()
   end)
 end
 
+--- Run a cluster command (start/delete) on the selected cluster
+--- @param action string "start" or "delete"
+local function cluster_action(action)
+  if not config.check_cli() then
+    vim.notify("[databricks.nvim] databricks CLI not found in PATH", vim.log.levels.ERROR)
+    return
+  end
+
+  local cluster_id = M.get_cluster_id()
+  if not cluster_id then
+    vim.notify("[databricks.nvim] No cluster selected. Run :DatabricksClusterSelect first", vim.log.levels.ERROR)
+    return
+  end
+
+  if not config.validate_cluster_id(cluster_id) then
+    vim.notify("[databricks.nvim] Invalid cluster ID format", vim.log.levels.ERROR)
+    return
+  end
+
+  local cfg = config.get()
+  local label = action == "start" and "Starting" or "Stopping"
+  vim.notify("[databricks.nvim] " .. label .. " cluster " .. cluster_id .. "...", vim.log.levels.INFO)
+
+  vim.fn.jobstart({
+    "databricks", "clusters", action,
+    "--profile", cfg.profile,
+    cluster_id,
+  }, {
+    stderr_buffered = true,
+    on_stderr = function(_, data)
+      -- collected but only used on error
+    end,
+    on_exit = function(_, exit_code)
+      vim.schedule(function()
+        if exit_code == 0 then
+          local done = action == "start" and "Start" or "Stop"
+          vim.notify("[databricks.nvim] " .. done .. " request sent for " .. cluster_id, vim.log.levels.INFO)
+        else
+          vim.notify("[databricks.nvim] Failed to " .. action .. " cluster (exit " .. exit_code .. ")", vim.log.levels.ERROR)
+        end
+      end)
+    end,
+  })
+end
+
+--- Start the selected cluster
+function M.start()
+  cluster_action("start")
+end
+
+--- Stop (terminate) the selected cluster
+function M.stop()
+  cluster_action("delete")
+end
+
 --- Display cluster list (no selection)
 function M.show_list()
   M.list(function(clusters, err)
