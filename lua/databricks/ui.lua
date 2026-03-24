@@ -14,6 +14,13 @@ function M.get_buf()
     return M._bufnr
   end
 
+  -- Check for an existing buffer with this name to avoid duplicates on re-run
+  local existing = vim.fn.bufnr("[databricks-output]")
+  if existing ~= -1 and vim.api.nvim_buf_is_valid(existing) then
+    M._bufnr = existing
+    return M._bufnr
+  end
+
   M._bufnr = vim.api.nvim_create_buf(false, true)
   vim.api.nvim_set_option_value("buftype", "nofile", { buf = M._bufnr })
   vim.api.nvim_set_option_value("bufhidden", "hide", { buf = M._bufnr })
@@ -32,7 +39,18 @@ function M.open()
   -- Focus existing window if already open
   if M._winnr and vim.api.nvim_win_is_valid(M._winnr) then
     vim.api.nvim_set_current_win(M._winnr)
+    -- Ensure the window shows the correct buffer
+    vim.api.nvim_win_set_buf(M._winnr, bufnr)
     return
+  end
+
+  -- Check if any window already displays this buffer
+  for _, win in ipairs(vim.api.nvim_list_wins()) do
+    if vim.api.nvim_win_get_buf(win) == bufnr then
+      M._winnr = win
+      vim.api.nvim_set_current_win(M._winnr)
+      return
+    end
   end
 
   vim.cmd(cfg.output_position .. " " .. cfg.output_height .. "split")
