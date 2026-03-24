@@ -161,7 +161,7 @@ local function poll_run(run_id, callback)
 
   local function check()
     exec_cli({
-      "runs", "get",
+      "jobs", "get-run",
       "--run-id", run_id,
     }, function(stdout, exit_code)
       if exit_code ~= 0 then
@@ -216,7 +216,7 @@ end
 --- @param run_id string
 local function fetch_output(run_id)
   exec_cli({
-    "runs", "get-output",
+    "jobs", "get-run-output",
     "--run-id", run_id,
   }, function(stdout, exit_code)
     if exit_code ~= 0 then
