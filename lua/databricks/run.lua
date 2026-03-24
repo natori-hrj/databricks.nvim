@@ -4,8 +4,10 @@ local ui = require("databricks.ui")
 
 local M = {}
 
---- Last run ID
+--- Last run ID (job-level)
 M._last_run_id = nil
+--- Last task run ID (for output retrieval)
+M._last_task_run_id = nil
 
 --- Helper to execute CLI commands asynchronously
 --- @param args string[] Command arguments ("databricks" is prepended automatically)
@@ -149,7 +151,7 @@ end
 
 --- Poll run status until completion
 --- @param run_id string
---- @param callback fun(success: boolean)
+--- @param callback fun(success: boolean, task_run_id: string|nil)
 local function poll_run(run_id, callback)
   local cfg = config.get()
 
@@ -158,21 +160,21 @@ local function poll_run(run_id, callback)
       "jobs", "get-run", run_id,
     }, function(stdout, exit_code)
       if exit_code ~= 0 then
-        callback(false)
+        callback(false, nil)
         return
       end
 
       local ok, parsed = pcall(vim.json.decode, stdout)
       if not ok or type(parsed) ~= "table" then
         ui.show_error("Failed to parse run status")
-        callback(false)
+        callback(false, nil)
         return
       end
 
       local state = parsed.state
       if not state then
         ui.show_error("No state in run response")
-        callback(false)
+        callback(false, nil)
         return
       end
 
@@ -182,19 +184,21 @@ local function poll_run(run_id, callback)
       if life_cycle == "TERMINATED" then
         if result_state == "SUCCESS" then
           ui.set_status("Run completed successfully")
-          callback(true)
+          -- Extract task run_id from tasks array as string to avoid float precision loss
+          local task_run_id = stdout:match('"tasks"%s*:%s*%[%s*{.-"run_id"%s*:%s*(%d+)')
+          callback(true, task_run_id)
         else
           local msg = state.state_message or "Unknown error"
           ui.show_error("Run failed: " .. result_state .. " - " .. msg)
-          callback(false)
+          callback(false, nil)
         end
       elseif life_cycle == "INTERNAL_ERROR" then
         local msg = state.state_message or "Internal error"
         ui.show_error("Internal error: " .. msg)
-        callback(false)
+        callback(false, nil)
       elseif life_cycle == "SKIPPED" then
         ui.show_error("Run was skipped")
-        callback(false)
+        callback(false, nil)
       else
         ui.set_status("Status: " .. (life_cycle or "unknown") .. "...")
         vim.defer_fn(check, cfg.poll_interval_ms)
@@ -281,9 +285,11 @@ function M.run_current_file()
         return
       end
 
-      poll_run(run_id, function(success)
+      poll_run(run_id, function(success, task_run_id)
         if success then
-          fetch_output(run_id)
+          local output_id = task_run_id or run_id
+          M._last_task_run_id = output_id
+          fetch_output(output_id)
         end
       end)
     end)
@@ -292,13 +298,14 @@ end
 
 --- Re-display the last run output
 function M.show_last_output()
-  if not M._last_run_id then
+  local output_id = M._last_task_run_id or M._last_run_id
+  if not output_id then
     vim.notify("[databricks.nvim] No previous run found", vim.log.levels.WARN)
     return
   end
 
   ui.open()
-  fetch_output(M._last_run_id)
+  fetch_output(output_id)
 end
 
 return M
