@@ -15,6 +15,21 @@ function M.setup(opts)
       vim.log.levels.WARN
     )
   end
+
+  -- Register default keymaps
+  local cfg = config.get()
+  local prefix = cfg.keymap_prefix
+  if prefix then
+    local map = function(key, cmd, desc)
+      vim.keymap.set("n", prefix .. key, cmd, { desc = "Databricks: " .. desc })
+    end
+    map("r", "<cmd>DatabricksRun<cr>", "Run file")
+    map("c", "<cmd>DatabricksClusterSelect<cr>", "Select cluster")
+    map("l", "<cmd>DatabricksClusterList<cr>", "List clusters")
+    map("o", "<cmd>DatabricksOutput<cr>", "Show output")
+    map("s", "<cmd>DatabricksClusterStart<cr>", "Start cluster")
+    map("x", "<cmd>DatabricksClusterStop<cr>", "Stop cluster")
+  end
 end
 
 -- Public API

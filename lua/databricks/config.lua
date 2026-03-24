@@ -14,6 +14,8 @@ local defaults = {
   output_position = "botright",
   -- Output buffer height (lines)
   output_height = 15,
+  -- Keymap prefix (set to false to disable default keymaps)
+  keymap_prefix = "<leader>d",
 }
 
 M._config = vim.deepcopy(defaults)
